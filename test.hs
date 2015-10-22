@@ -80,5 +80,5 @@ main = do
 
     inpHandle <- openFile filename ReadMode
     contents <- hGetContents inpHandle
-    print contents
+    --print contents
     print $ parseBencoded contents
