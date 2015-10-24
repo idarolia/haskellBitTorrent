@@ -3,26 +3,28 @@ import BENCODE
 import qualified Data.Map as Map
 import Data.Map(Map)
 import Text.ParserCombinators.Parsec
+import Data.BEncode
+import Data.ByteString.Lazy as B
 
 import System.IO
 import System.IO (hFlush, stdout)
 
-readBencodeDict :: Bencode -> String -> Maybe Bencode
-readBencodeDict (BEDictionary dict) key = Map.lookup key dict
-
 main = do
-    putStr "\nEnter filename: " >> hFlush stdout
-    filename <- getLine
+    --filename <- getLine
+    --let filename = "newfile"
+    let filename = "file"
     
-    inpHandle <- openFile filename ReadMode
-    contents <- hGetContents inpHandle
+    inpData <- B.readFile filename 
+    let contents = bRead inpData
+
+    let mainDict = maybeDict2Dict contents
+
+    let url = readDict mainDict "announce"
+    let announceURL = maybeString2String url
+
+    let infoDict = readDict mainDict "info"
+    let info = maybeDict2Dict infoDict
     
-    -- Convert torrent file to bencode
-    let bencodeDict = maybe2Bencode1 $ parseBencoded contents
-    --print bencodeDict
+    let initLeft = findInitLeft info
+    print initLeft
 
-    let url = readBencodeDict bencodeDict "announce"
-    let BEString announceURL = maybe2Bencode url
-
-
-    print announceURL

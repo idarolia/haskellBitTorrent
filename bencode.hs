@@ -3,78 +3,40 @@ module BENCODE where
 import qualified Data.Map as Map
 import Data.Map(Map)
 import Text.ParserCombinators.Parsec
+import Data.BEncode
+import Data.ByteString.Lazy as B
 
-data Bencode = BEInteger Integer 
-             | BEString String 
-             | BEList [Bencode] 
-             | BEDictionary (Map String Bencode)
-             | BENull
-             deriving (Show, Eq)
+deparse :: BEncode -> B.ByteString
+deparse bencodeData = bPack bencodeData
 
-number :: Parser Integer
-number = 
-    do  n_str <- many1 digit 
-        let n = read n_str
-        return n
+readDict :: Map String BEncode -> String -> Maybe BEncode
+readDict dict key = Map.lookup key dict
 
-beString :: Parser Bencode
-beString =
-    do  n <- number 
-        char ':'
-        str <- count (fromInteger n) anyChar
-        return (BEString str) 
+maybeInt2Int :: Maybe BEncode -> Integer
+maybeInt2Int Nothing         = 0
+maybeInt2Int (Just (BInt x)) = x
 
+maybeString2String :: Maybe BEncode -> B.ByteString
+maybeString2String Nothing            = B.empty
+maybeString2String (Just (BString x)) = x
 
-beInt :: Parser Bencode
-beInt =
-    do  char 'i'
-        n <- number
-        char 'e'
-        return (BEInteger n)
+maybeList2List :: Maybe BEncode -> [BEncode]
+maybeList2List Nothing          = []
+maybeList2List (Just (BList x)) = x
 
-beParse :: Parser Bencode
-beParse = beInt <|> beString <|> beDictionary <|> beList
+maybeDict2Dict :: Maybe BEncode -> Map String BEncode
+maybeDict2Dict Nothing          = Map.empty
+maybeDict2Dict (Just (BDict m)) = m
 
-beList :: Parser Bencode
-beList =
-    do  char 'l'
-        xs <- many beParse               -- parse many bencoded values
-        char 'e'
-        return (BEList xs)
+getLenSum :: [BEncode] -> Integer
+getLenSum []        = 0
+getLenSum (x:xs)    = maybeInt2Int (Map.lookup "length" dict) + getLenSum xs
+                      where BDict dict = x
 
-beDictionary1 :: Parser Bencode
-beDictionary1 =
-    do  (BEString key) <- beString
-        val <- beParse
-        (BEDictionary m) <- beDictionary1
-                           <|> beDictionary 
-                           <|> do char 'e'
-                                  return (BEDictionary Map.empty)
-        return (BEDictionary (Map.insert key val m))
-
-
-beDictionary :: Parser Bencode
-beDictionary =
-    do  char 'd'
-        (BEString key) <- beString
-        val <- beParse
-        (BEDictionary m) <- beDictionary1 
-                           <|> do char 'e'
-                                  return (BEDictionary Map.empty)
-
-        return (BEDictionary (Map.insert key val m))
-
--- main parser function
-parseBencoded :: String -> Maybe [Bencode]
-parseBencoded str = case parse (many beParse) "" str of
-                                Left err -> Nothing
-                                Right val -> Just val
-
--- convert parseBencoded to Bencode
-maybe2Bencode1 :: Maybe[Bencode] -> Bencode
-maybe2Bencode1 Nothing       = BENull
-maybe2Bencode1 (Just (x:xs)) = x
-
-maybe2Bencode :: Maybe Bencode -> Bencode
-maybe2Bencode Nothing       = BENull
-maybe2Bencode (Just x)      = x
+findInitLeft :: Map String BEncode -> Integer
+findInitLeft info   | Map.size info == 0        = 0
+                    | fileList == Nothing   = maybeInt2Int len
+                    | otherwise             = getLenSum $ maybeList2List fileList
+                        where fileList  = Map.lookup "files" info
+                              len       = Map.lookup "length" info
+                              
