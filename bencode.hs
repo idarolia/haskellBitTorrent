@@ -5,6 +5,7 @@ import Data.Map(Map)
 import Text.ParserCombinators.Parsec
 import Data.BEncode
 import Data.ByteString.Lazy as B
+--import Data.ByteString.Char8 as BC
 
 deparse :: BEncode -> B.ByteString
 deparse bencodeData = bPack bencodeData
