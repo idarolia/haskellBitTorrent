@@ -1,4 +1,5 @@
 import BENCODE
+import HTTP_REQ
 
 import qualified Data.Map as Map
 import Data.Map(Map)
@@ -11,7 +12,6 @@ import System.IO
 import System.IO (hFlush, stdout)
 
 main = do
-    --filename <- getLine
     let filename = "newfile"
     
     inpData <- B.readFile filename 
@@ -35,6 +35,7 @@ main = do
     let numPieces = (B.length pieces) `div` 20
 
     let infoBencode = deparse (BDict info)
-    --print infoBencode
     let infoHash = B.fromStrict $ hashlazy (infoBencode)
     print infoHash
+    let peerId = genPeerID
+    print peerId
