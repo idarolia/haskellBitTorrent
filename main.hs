@@ -36,6 +36,8 @@ main = do
 
     let infoBencode = deparse (BDict info)
     let infoHash = B.fromStrict $ hashlazy (infoBencode)
-    print infoHash
-    let peerId = genPeerID
+
+    peerId <- genPeerID
+    tcpSock <- makeTCPSock
     print peerId
+
