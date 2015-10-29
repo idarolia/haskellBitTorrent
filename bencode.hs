@@ -7,7 +7,7 @@ import Data.BEncode
 import Data.ByteString.Lazy as B
 --import Data.ByteString.Char8 as BC
 
-deparse :: BEncode -> B.ByteString
+--deparse :: BEncode -> B.ByteString
 deparse bencodeData = bPack bencodeData
 
 readDict :: Map String BEncode -> String -> Maybe BEncode

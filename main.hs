@@ -16,7 +16,7 @@ import System.IO
 import System.IO (hFlush, stdout)
 
 main = do
-    let filename = "newfile"
+    let filename = "Warrior.2011.BRRip.x264.AC3-MiLLENiUM(2) [IPT].torrent"
     
     inpData <- B.readFile filename 
     let contents = bRead inpData
@@ -39,16 +39,17 @@ main = do
     let numPieces = (B.length pieces) `div` 20
 
     let infoBencode = deparse (BDict info)
-    let infoHash = SHA1.hash (infoBencode) -- hashlazy to hash function used here
+    let infoHash = SHA1.hashlazy (infoBencode) -- hashlazy returns a bytestring instead of a digest bytestring
 
     peerId <- genPeerID
     tcpSock <- makeTCPSock
-    let port = BC.pack $ show $ socketPort tcpSock
+    temp <- socketPort tcpSock
+    let port = BC.pack $ show $ temp
     let compact = BC.pack "1"
     let uploaded = BC.pack "0"
     let download = BC.pack "0"
 
     queryTracker peerId infoHash compact port uploaded download initLeft announceURL
     print peerId
-    --print port
+    print infoHash
 

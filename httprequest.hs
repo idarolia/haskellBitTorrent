@@ -1,7 +1,8 @@
 module HTTP_REQ where
 
 --import Data.ByteString.From
-import Network.HTTP.Conduit
+--import Network.HTTP.Conduit
+import Network.HTTP.Client
 --import Network.HTTP.Client.Request
 import Data.ByteString.Lazy as B
 import Data.ByteString.Lazy.Char8 as C
@@ -38,4 +39,7 @@ queryTracker peerId infoHash compact port uploaded downloaded initLeft announceU
 									(BC.pack "uploaded",Just uploaded),
 									(BC.pack "downloaded",Just downloaded),
 									(BC.pack "left", Just initLeft)	] url
-			print url
+			print req
+			manager <- newManager defaultManagerSettings
+			response <- httpLbs req manager
+			print response
