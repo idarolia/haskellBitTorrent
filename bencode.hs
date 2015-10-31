@@ -12,9 +12,6 @@ import Control.Monad
 import Control.Applicative
 import Data.Traversable
 
---import Data.ByteString.Char8 as BC
-
-
 bstring :: Traversal' BEncode ByteString
 bstring f (BString s) = BString <$> f s
 bstring _ bv = pure bv

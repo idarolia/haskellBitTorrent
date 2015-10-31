@@ -12,9 +12,6 @@ import Crypto.Hash.SHA1 as SHA1
 import Crypto.Hash
 import Network.Socket
 import Data.Byteable
---import Data.ByteString.Base16
---import Data.Hash
-
 import System.IO
 import System.IO (hFlush, stdout)
 
