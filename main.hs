@@ -11,12 +11,15 @@ import Data.ByteString.Char8 as BC
 import Crypto.Hash.SHA1 as SHA1
 import Crypto.Hash
 import Network.Socket
+import Data.Byteable
+--import Data.ByteString.Base16
+--import Data.Hash
 
 import System.IO
 import System.IO (hFlush, stdout)
 
 main = do
-    let filename = "Warrior.2011.BRRip.x264.AC3-MiLLENiUM(2) [IPT].torrent"
+    let filename = "debian-8.2.0-amd64-lxde-CD-1.iso.torrent"
     
     inpData <- B.readFile filename 
     let contents = bRead inpData
@@ -39,7 +42,7 @@ main = do
     let numPieces = (B.length pieces) `div` 20
 
     let infoBencode = deparse (BDict info)
-    let infoHash = SHA1.hashlazy (infoBencode) -- hashlazy returns a bytestring instead of a digest bytestring
+    let infoHash = toBytes $ SHA1.hashlazy (infoBencode)--BC.pack $ C.unpack $ B.fromStrict $ toBytes $ SHA1.hashlazy (infoBencode) -- hashlazy returns a bytestring instead of a digest bytestring
 
     peerId <- genPeerID
     tcpSock <- makeTCPSock
@@ -49,7 +52,8 @@ main = do
     let uploaded = BC.pack "0"
     let download = BC.pack "0"
 
-    queryTracker peerId infoHash compact port uploaded download initLeft announceURL
-    print peerId
-    print infoHash
-
+    peerList <- queryTracker peerId infoHash compact port uploaded download initLeft announceURL
+    --print $ announceURL
+    --print $ infoHash
+    --print contents
+    print peerList

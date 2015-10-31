@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-} -- Rank2Types is a synonym for RankNTypes
 module BENCODE where
 
 import qualified Data.Map as Map
@@ -5,7 +6,32 @@ import Data.Map(Map)
 import Text.ParserCombinators.Parsec
 import Data.BEncode
 import Data.ByteString.Lazy as B
+import Lens.Family2
+import Data.Attoparsec.ByteString
+import Control.Monad
+import Control.Applicative
+import Data.Traversable
+
 --import Data.ByteString.Char8 as BC
+
+
+bstring :: Traversal' BEncode ByteString
+bstring f (BString s) = BString <$> f s
+bstring _ bv = pure bv
+
+bnumber :: Traversal' BEncode Integer
+bnumber f (BInt n) = BInt <$> f n
+bnumber _ bv = pure bv
+
+blist :: Traversal' BEncode BEncode
+blist f (BList xs) = BList <$> traverse f xs
+blist _ bv = pure bv
+
+bkey :: String -> Traversal' BEncode BEncode
+bkey k f bv@(BDict m) = case Map.lookup k m of
+                               Just v -> f v
+                               Nothing -> pure bv
+bkey _ _ bv = pure bv
 
 --deparse :: BEncode -> B.ByteString
 deparse bencodeData = bPack bencodeData

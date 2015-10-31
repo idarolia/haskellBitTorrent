@@ -2,6 +2,7 @@ module HTTP_REQ where
 
 --import Data.ByteString.From
 --import Network.HTTP.Conduit
+import BENCODE
 import Network.HTTP.Client
 --import Network.HTTP.Client.Request
 import Data.ByteString.Lazy as B
@@ -12,6 +13,8 @@ import System.IO
 import Control.Applicative
 import Control.Monad
 import Network.Socket
+import Data.BEncode
+import Lens.Family2
 --import Network.HTTP
 --import Network.URL
 
@@ -26,7 +29,7 @@ makeTCPSock :: IO Socket
 makeTCPSock = do
 			    sock <- socket AF_INET Stream defaultProtocol	--create Socket
 			    bindSocket sock (SockAddrInet aNY_PORT iNADDR_ANY)
-			    listen sock 5	-- number of connection allowed at a time
+			    listen sock 5	-- number of connections allowed at a time
 			    return sock
 
 --queryTracker :: ByteString -> ByteString -> ByteString -> ByteString -> ByteString -> ByteString -> ByteString -> ByteString -> 
@@ -42,4 +45,9 @@ queryTracker peerId infoHash compact port uploaded downloaded initLeft announceU
 			print req
 			manager <- newManager defaultManagerSettings
 			response <- httpLbs req manager
-			print response
+			let body = responseBody response
+			print body
+			case bRead body of 
+				Just result -> return $ result ^. (bkey "peers" . bstring)
+				_ -> return $ C.pack "null"
+			--print body
