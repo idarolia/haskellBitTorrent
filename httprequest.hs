@@ -1,9 +1,8 @@
 module HTTP_REQ where
 
---import Data.ByteString.From
---import Network.HTTP.Conduit
+import BENCODE
 import Network.HTTP.Client
---import Network.HTTP.Client.Request
+import Data.ByteString as BS
 import Data.ByteString.Lazy as B
 import Data.ByteString.Lazy.Char8 as C
 import Data.ByteString.Char8 as BC
@@ -12,8 +11,14 @@ import System.IO
 import Control.Applicative
 import Control.Monad
 import Network.Socket
---import Network.HTTP
---import Network.URL
+import Data.BEncode
+import Lens.Family2
+import Network
+import Data.List.Split
+import Data.List as L
+import Data.Word
+
+data PeerAddress = Address {host :: HostName, port :: PortID} deriving (Show)
 
 genPeerID :: IO BC.ByteString
 genPeerID = do
@@ -26,10 +31,18 @@ makeTCPSock :: IO Socket
 makeTCPSock = do
 			    sock <- socket AF_INET Stream defaultProtocol	--create Socket
 			    bindSocket sock (SockAddrInet aNY_PORT iNADDR_ANY)
-			    listen sock 5	-- number of connection allowed at a time
+			    listen sock 5	-- number of connections allowed at a time
 			    return sock
 
---queryTracker :: ByteString -> ByteString -> ByteString -> ByteString -> ByteString -> ByteString -> ByteString -> ByteString -> 
+decodePeer :: [Word8] -> PeerAddress							--f
+decodePeer peer = let (ip,port) = L.splitAt 4 peer
+                      host = L.intercalate "." $ Prelude.map show ip
+                      (x:y:[]) = Prelude.map fromIntegral port
+                    in Address host (PortNumber (y + x*256))
+
+decodePeers:: C.ByteString -> [PeerAddress]
+decodePeers peers = Prelude.map decodePeer $ chunksOf 6 $ BS.unpack $ C.toStrict peers
+
 queryTracker peerId infoHash compact port uploaded downloaded initLeft announceURL = do
 			url <- parseUrl $ C.unpack announceURL
 			let req = setQueryString [  (BC.pack "peer_id",Just peerId),
@@ -39,6 +52,11 @@ queryTracker peerId infoHash compact port uploaded downloaded initLeft announceU
 									(BC.pack "uploaded",Just uploaded),
 									(BC.pack "downloaded",Just downloaded),
 									(BC.pack "left", Just initLeft)	] url
+			print req
 			manager <- newManager defaultManagerSettings
 			response <- httpLbs req manager
-			return response
+			let body = responseBody response
+			print body
+			case bRead body of 
+				Just result -> return $ decodePeers $ result ^. (bkey "peers" . bstring)
+				_ -> return []
