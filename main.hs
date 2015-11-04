@@ -11,12 +11,13 @@ import Data.ByteString.Char8 as BC
 import Crypto.Hash.SHA1 as SHA1
 import Crypto.Hash
 import Network.Socket
+import Network.HTTP.Client
 
 import System.IO
 import System.IO (hFlush, stdout)
 
 main = do
-    let filename = "Warrior.2011.BRRip.x264.AC3-MiLLENiUM(2) [IPT].torrent"
+    let filename = "VirtualBox - CentOS 4.8 i386 Desktop Virtual Disk Image - [VirtualBoxImages.com] [mininova].torrent"
     
     inpData <- B.readFile filename 
     let contents = bRead inpData
@@ -45,11 +46,14 @@ main = do
     tcpSock <- makeTCPSock
     temp <- socketPort tcpSock
     let port = BC.pack $ show $ temp
-    let compact = BC.pack "1"
+    let compact = BC.pack "0"
     let uploaded = BC.pack "0"
     let download = BC.pack "0"
 
-    queryTracker peerId infoHash compact port uploaded download initLeft announceURL
-    print peerId
-    print infoHash
+    response <- queryTracker peerId infoHash compact port uploaded download initLeft announceURL
+    
+    let resBody = responseBody response
+    let resBodyContent = bRead resBody
+    let resBodyDict = maybeDict2Dict resBodyContent
+    print resBodyDict
 

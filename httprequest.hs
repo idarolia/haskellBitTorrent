@@ -39,7 +39,6 @@ queryTracker peerId infoHash compact port uploaded downloaded initLeft announceU
 									(BC.pack "uploaded",Just uploaded),
 									(BC.pack "downloaded",Just downloaded),
 									(BC.pack "left", Just initLeft)	] url
-			print req
 			manager <- newManager defaultManagerSettings
 			response <- httpLbs req manager
-			print response
+			return response
