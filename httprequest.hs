@@ -56,7 +56,19 @@ queryTracker peerId infoHash compact port uploaded downloaded initLeft announceU
 			manager <- newManager defaultManagerSettings
 			response <- httpLbs req manager
 			let body = responseBody response
-			print body
+			--print body
 			case bRead body of 
 				Just result -> return $ decodePeers $ result ^. (bkey "peers" . bstring)
 				_ -> return []
+
+
+connectPeer (Address host port) = do
+									sock <- socket AF_INET Stream defaultProtocol
+									connect sock (SockAddrInet port host)
+									handle <- socketToHandle sock ReadWriteMode
+									input <- B.hGetContents handle
+
+
+--connectPeers::[PeerAddress]
+connectPeers (x:xs) = connectPeer x
+

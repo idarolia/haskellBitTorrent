@@ -50,4 +50,6 @@ main = do
     let download = BC.pack "0"
 
     peerList <- queryTracker peerId infoHash compact port uploaded download initLeft announceURL
+    connectPeers peerList
+
     print peerList
