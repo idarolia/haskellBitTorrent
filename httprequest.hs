@@ -62,11 +62,12 @@ queryTracker peerId infoHash compact port uploaded downloaded initLeft announceU
 				_ -> return []
 
 
-connectPeer (Address host port) = do
+connectPeer (Address host (PortNumber port)) = do
 									sock <- socket AF_INET Stream defaultProtocol
 									connect sock (SockAddrInet port host)
 									handle <- socketToHandle sock ReadWriteMode
 									input <- B.hGetContents handle
+									return input
 
 
 --connectPeers::[PeerAddress]
