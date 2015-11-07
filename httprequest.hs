@@ -34,7 +34,7 @@ makeTCPSock = do
 			    listen sock 5	-- number of connections allowed at a time
 			    return sock
 
-decodePeer :: [Word8] -> PeerAddress	--f
+decodePeer :: [Word8] -> PeerAddress	--Family2			--ipv6 ka kya karna hai?
 decodePeer peer = let (ip,port) = L.splitAt 4 peer
                       host = L.intercalate "." $ Prelude.map show ip
                       (x:y:[]) = Prelude.map fromIntegral port
@@ -56,7 +56,18 @@ queryTracker peerId infoHash compact port uploaded downloaded initLeft announceU
 			manager <- newManager defaultManagerSettings
 			response <- httpLbs req manager
 			let body = responseBody response
-			print body
+			--print body
 			case bRead body of 
 				Just result -> return $ decodePeers $ result ^. (bkey "peers" . bstring)
 				_ -> return []
+
+connectPeer (Address host port) = do
+									sock <- socket AF_INET Stream defaultProtocol
+									sock1 <- getAddrInfo Nothing (Just host) (Just $ show port)
+									connect sock (addrAddress $ Prelude.head sock1)
+									handle <- socketToHandle sock ReadWriteMode
+									input <- B.hGetContents handle
+									return input
+
+--connectPeers::[PeerAddress]
+connectPeers (x:xs) = connectPeer x

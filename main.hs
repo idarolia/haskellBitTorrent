@@ -54,3 +54,5 @@ main = do
     --print $ infoHash
     --print contents
     print peerList
+    let input = connectPeers peerList
+    print "abc"
