@@ -14,6 +14,7 @@ import Network.Socket
 import Data.Byteable
 import System.IO
 import System.IO (hFlush, stdout)
+import Data.Binary.Put
 
 main = do
     let filename = "debian-8.2.0-amd64-lxde-CD-1.iso.torrent"
@@ -50,6 +51,10 @@ main = do
     let download = BC.pack "0"
 
     peerList <- queryTracker peerId infoHash compact port uploaded download initLeft announceURL
-    let input = connectPeers peerList
-
+    --print $ announceURL
+    --print $ infoHash
+    --print contents
     print peerList
+    handle <- connectPeers peerList
+    string <- handshakeFunction "BitTorrent protocol" 0 infoHash peerId handle
+    print string 

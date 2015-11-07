@@ -17,6 +17,8 @@ import Network
 import Data.List.Split
 import Data.List as L
 import Data.Word
+import Data.Binary as Binary
+import Data.Binary.Put
 
 data PeerAddress = Address {host :: HostName, port :: PortID} deriving (Show)
 
@@ -34,7 +36,7 @@ makeTCPSock = do
 			    listen sock 5	-- number of connections allowed at a time
 			    return sock
 
-decodePeer :: [Word8] -> PeerAddress							--f
+decodePeer :: [Word8] -> PeerAddress	--Family2			--ipv6 ka kya karna hai?
 decodePeer peer = let (ip,port) = L.splitAt 4 peer
                       host = L.intercalate "." $ Prelude.map show ip
                       (x:y:[]) = Prelude.map fromIntegral port
@@ -61,15 +63,24 @@ queryTracker peerId infoHash compact port uploaded downloaded initLeft announceU
 				Just result -> return $ decodePeers $ result ^. (bkey "peers" . bstring)
 				_ -> return []
 
-
-connectPeer (Address host (PortNumber port)) = do
+connectPeer (Address host port) = do
 									sock <- socket AF_INET Stream defaultProtocol
-									connect sock (SockAddrInet port host)
+									sock1 <- getAddrInfo Nothing (Just host) (Just $ show port)
+									connect sock (addrAddress $ Prelude.head sock1)
 									handle <- socketToHandle sock ReadWriteMode
 									input <- B.hGetContents handle
-									return input
-
+									return handle
 
 --connectPeers::[PeerAddress]
 connectPeers (x:xs) = connectPeer x
+
+-- send the handshake, get corresponding result handshake, check if matches, then create a listening and a talking thread
+--Handshake:: Handle -> IO  --plus some stuff
+handshakeFunction protocol reserved infoHash peerId handle = do
+															putWord8 . fromIntegral $ Prelude.length protocol
+															putByteString . BC.pack $ protocol
+															putWord64be reserved
+															putByteString infoHash
+															let str = putByteString peerId
+															return $ runPut . str
 
