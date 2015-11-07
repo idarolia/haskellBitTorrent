@@ -17,6 +17,8 @@ import Network
 import Data.List.Split
 import Data.List as L
 import Data.Word
+import Data.Binary as Binary
+import Data.Binary.Put
 
 data PeerAddress = Address {host :: HostName, port :: PortID} deriving (Show)
 
@@ -67,7 +69,21 @@ connectPeer (Address host port) = do
 									connect sock (addrAddress $ Prelude.head sock1)
 									handle <- socketToHandle sock ReadWriteMode
 									input <- B.hGetContents handle
-									return input
+									return handle
 
 --connectPeers::[PeerAddress]
 connectPeers (x:xs) = connectPeer x
+
+put1 protocol reserved infoHash peerId = do
+											putWord8 . fromIntegral $ Prelude.length protocol
+											putByteString . BC.pack $ protocol
+											putWord64be reserved
+											putByteString infoHash
+											putByteString peerId	
+
+-- send the handshake, get corresponding result handshake, check if matches, then create a listening and a talking thread
+--Handshake:: Handle -> IO  --plus some stuff
+handshakeFunction protocol reserved infoHash peerId handle = runPut . put1
+															
+
+
