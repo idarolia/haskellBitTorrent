@@ -74,16 +74,12 @@ connectPeer (Address host port) = do
 --connectPeers::[PeerAddress]
 connectPeers (x:xs) = connectPeer x
 
-put1 protocol reserved infoHash peerId = do
-											putWord8 . fromIntegral $ Prelude.length protocol
-											putByteString . BC.pack $ protocol
-											putWord64be reserved
-											putByteString infoHash
-											putByteString peerId	
+sendHandshake handle infoHash peerId = BC.hPutStr handle handshake
+									   where handshake = BS.concat[BS.singleton(fromIntegral 19), BC.pack "BitTorrent protocol", BS.replicate 8 (fromIntegral 0), infoHash, peerId ]
 
 -- send the handshake, get corresponding result handshake, check if matches, then create a listening and a talking thread
 --Handshake:: Handle -> IO  --plus some stuff
-handshakeFunction protocol reserved infoHash peerId handle = runPut . put1
+--handshakeFunction protocol reserved infoHash peerId handle = runPut . put1
 															
 
 

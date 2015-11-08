@@ -56,5 +56,5 @@ main = do
     --print contents
     print peerList
     handle <- connectPeers peerList
-    let string = handshakeFunction "BitTorrent protocol" 0 infoHash peerId handle
-    print string 
+    sendHandshake handle infoHash peerId
+    print "abc" 
