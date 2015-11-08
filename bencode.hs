@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes #-} -- Rank2Types is a synonym for RankNTypes
+{-# LANGUAGE RankNTypes #-}
 module BENCODE where
 
 import qualified Data.Map as Map

@@ -63,6 +63,7 @@ queryTracker peerId infoHash compact port uploaded downloaded initLeft announceU
 				Just result -> return $ decodePeers $ result ^. (bkey "peers" . bstring)
 				_ -> return []
 
+connectPeer:: PeerAddress -> IO Handle
 connectPeer (Address host port) = do
 									sock <- socket AF_INET Stream defaultProtocol
 									sock1 <- getAddrInfo Nothing (Just host) (Just $ show port)
@@ -71,11 +72,20 @@ connectPeer (Address host port) = do
 									input <- B.hGetContents handle
 									return handle
 
---connectPeers::[PeerAddress]
+connectPeers::[PeerAddress] -> IO Handle
 connectPeers (x:xs) = connectPeer x
 
+sendHandshake:: Handle -> BC.ByteString -> BC.ByteString -> IO () -- not tested
 sendHandshake handle infoHash peerId = BC.hPutStr handle handshake
 									   where handshake = BS.concat[BS.singleton(fromIntegral 19), BC.pack "BitTorrent protocol", BS.replicate 8 (fromIntegral 0), infoHash, peerId ]
+
+receiveHandshake:: Handle -> IO (BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString) -- not tested
+receiveHandshake handle =    do pstrlen <- BS.hGet handle 1
+                                pstr <- BS.hGet handle $ fromIntegral $ Prelude.head $ BS.unpack pstrlen
+                                reserved <- BS.hGet handle 8
+                                peerId <- BS.hGet handle 20
+                                infoHash <- BS.hGet handle 20
+                                return (pstrlen,pstr,reserved,infoHash,peerId)
 
 -- send the handshake, get corresponding result handshake, check if matches, then create a listening and a talking thread
 --Handshake:: Handle -> IO  --plus some stuff
