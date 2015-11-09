@@ -56,5 +56,13 @@ main = do
     --print contents
     print peerList
     handle <- connectPeers peerList
-    string <- handshakeFunction "BitTorrent protocol" 0 infoHash peerId handle
-    print string 
+    print "handle"
+    print handle
+    sendHandshake handle infoHash peerId
+    res <- receiveHandshake handle
+    print res
+    --case validateHandshake res infoHash of
+    --    Left _      -> "wrong infoHash"
+    --    Right ()    -> "right infoHash"
+    print $ validateHandshake res infoHash
+    print "---END---" 

@@ -63,24 +63,35 @@ queryTracker peerId infoHash compact port uploaded downloaded initLeft announceU
 				Just result -> return $ decodePeers $ result ^. (bkey "peers" . bstring)
 				_ -> return []
 
-connectPeer (Address host port) = do
+connectPeer:: PeerAddress -> IO Handle
+connectPeer (Address host (PortNumber port)) = do
 									sock <- socket AF_INET Stream defaultProtocol
+									--print (Just host)
+									--print (Just $ show port)
 									sock1 <- getAddrInfo Nothing (Just host) (Just $ show port)
+									--print "Bunny2"
 									connect sock (addrAddress $ Prelude.head sock1)
 									handle <- socketToHandle sock ReadWriteMode
 									input <- B.hGetContents handle
 									return handle
 
---connectPeers::[PeerAddress]
+connectPeers::[PeerAddress] -> IO Handle
 connectPeers (x:xs) = connectPeer x
 
--- send the handshake, get corresponding result handshake, check if matches, then create a listening and a talking thread
---Handshake:: Handle -> IO  --plus some stuff
-handshakeFunction protocol reserved infoHash peerId handle = do
-															putWord8 . fromIntegral $ Prelude.length protocol
-															putByteString . BC.pack $ protocol
-															putWord64be reserved
-															putByteString infoHash
-															let str = putByteString peerId
-															return $ runPut . str
+sendHandshake:: Handle -> BC.ByteString -> BC.ByteString -> IO () -- not tested
+sendHandshake handle infoHash peerId = BC.hPutStr handle handshake
+									   where handshake = BS.concat[BS.singleton(fromIntegral 19), BC.pack "BitTorrent protocol", BS.replicate 8 (fromIntegral 0), infoHash, peerId ]
 
+receiveHandshake:: Handle -> IO (BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString) -- not tested
+receiveHandshake handle =    do pstrlen <- BS.hGet handle 1
+                                pstr <- BS.hGet handle $ fromIntegral $ Prelude.head $ BS.unpack pstrlen
+                                reserved <- BS.hGet handle 8
+                                infoHash <- BS.hGet handle 20
+                                peerId <- BS.hGet handle 20
+                                return (pstrlen,pstr,reserved,infoHash,peerId)
+
+--validateHandshake:: IO (BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString) -> infoHash -> Either String () 
+validateHandshake (_,_,_,info_hash,_) infoHash
+											|info_hash == infoHash = Right ()
+											|otherwise = Left ("Peer InfoHash mismatch")
+								
