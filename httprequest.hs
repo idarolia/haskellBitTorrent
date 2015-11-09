@@ -87,9 +87,8 @@ receiveHandshake handle =    do pstrlen <- BS.hGet handle 1
                                 infoHash <- BS.hGet handle 20
                                 return (pstrlen,pstr,reserved,infoHash,peerId)
 
--- send the handshake, get corresponding result handshake, check if matches, then create a listening and a talking thread
---Handshake:: Handle -> IO  --plus some stuff
---handshakeFunction protocol reserved infoHash peerId handle = runPut . put1
+--validateHandshake:: IO (BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString) -> infoHash -> Either String () 
+validateHandshake (_,_,_,info_hash,_) infoHash
+											|info_hash == infoHash = Right ()
+											|otherwise = Left ("Peer InfoHash mismatch")
 															
-
-
