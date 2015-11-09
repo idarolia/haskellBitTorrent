@@ -81,15 +81,19 @@ connectPeers (x:xs) = connectPeer x
 sendHandshake:: Handle -> BC.ByteString -> BC.ByteString -> IO () -- not tested
 sendHandshake handle infoHash peerId = BC.hPutStr handle handshake
 									   where handshake = BS.concat[BS.singleton(fromIntegral 19), BC.pack "BitTorrent protocol", BS.replicate 8 (fromIntegral 0), infoHash, peerId ]
-
+ 
 receiveHandshake:: Handle -> IO (BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString) -- not tested
-receiveHandshake handle =    do pstrlen <- BS.hGet handle 1
-                                pstr <- BS.hGet handle $ fromIntegral $ Prelude.head $ BS.unpack pstrlen
-                                reserved <- BS.hGet handle 8
-                                infoHash <- BS.hGet handle 20
-                                peerId <- BS.hGet handle 20
-                                return (pstrlen,pstr,reserved,infoHash,peerId)
-
+receiveHandshake handle =    do 
+								pstrlen <- BS.hGet handle 1
+								let null = BC.pack ""
+								pstr <-  BS.hGet handle $ fromIntegral $ Prelude.head $ BS.unpack pstrlen
+								reserved <-  BS.hGet handle 8
+								infoHash <- BS.hGet handle 20
+								peerId <- BS.hGet handle 20
+								return (case pstrlen of 
+									null -> (null,null,null,null,null)
+									_ -> (pstrlen,pstr,reserved,infoHash,peerId))
+								
 --validateHandshake:: IO (BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString) -> infoHash -> Either String () 
 validateHandshake (_,_,_,info_hash,_) infoHash
 											|info_hash == infoHash = Right ()
