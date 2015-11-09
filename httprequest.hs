@@ -76,14 +76,27 @@ connectPeer (Address host (PortNumber port)) = do
 									return handle
 
 connectPeers::[PeerAddress] -> IO Handle
-connectPeers (x:xs) = connectPeer x
+connectPeers list = connectPeer (list !! 0)
 
 sendHandshake:: Handle -> BC.ByteString -> BC.ByteString -> IO () -- not tested
 sendHandshake handle infoHash peerId = BC.hPutStr handle handshake
 									   where handshake = BS.concat[BS.singleton(fromIntegral 19), BC.pack "BitTorrent protocol", BS.replicate 8 (fromIntegral 0), infoHash, peerId ]
+--put a string in IO
+--helper:: IO BC.ByteString
+--helper s = do 
+--			let a = BC.pack s
+--			return a
 
 receiveHandshake:: Handle -> IO (BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString) -- not tested
 receiveHandshake handle =    do pstrlen <- BS.hGet handle 1
+                                print $ pstrlen
+                                --return $ case BS.unpack pstrlen of
+                                --    [] -> (BC.pack "", BC.pack "", BC.pack "", BC.pack "", BC.pack "")
+                                --    _  -> (pstrlen,pstr,reserved,infoHash,peerId) where
+                                --            pstr = BS.hGet handle $ fromIntegral $ Prelude.head $ BS.unpack pstrlen
+                                --            reserved = BS.hGet handle 8
+                                --            infoHash = BS.hGet handle 20
+                                --            peerId = BS.hGet handle 20
                                 pstr <- BS.hGet handle $ fromIntegral $ Prelude.head $ BS.unpack pstrlen
                                 reserved <- BS.hGet handle 8
                                 infoHash <- BS.hGet handle 20
@@ -92,6 +105,7 @@ receiveHandshake handle =    do pstrlen <- BS.hGet handle 1
 
 --validateHandshake:: IO (BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString) -> infoHash -> Either String () 
 validateHandshake (_,_,_,info_hash,_) infoHash
+
 											|info_hash == infoHash = Right ()
 											|otherwise = Left ("Peer InfoHash mismatch")
 								
