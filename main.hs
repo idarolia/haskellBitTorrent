@@ -42,7 +42,7 @@ main = do
     let infoBencode = deparse (BDict info)
     let infoHash = toBytes $ SHA1.hashlazy (infoBencode)--BC.pack $ C.unpack $ B.fromStrict $ toBytes $ SHA1.hashlazy (infoBencode) -- hashlazy returns a bytestring instead of a digest bytestring
 
-    peerId <- genPeerID
+    myPeerId <- genPeerID
     tcpSock <- makeTCPSock
     temp <- socketPort tcpSock
     let port = BC.pack $ show $ temp
@@ -50,19 +50,17 @@ main = do
     let uploaded = BC.pack "0"
     let download = BC.pack "0"
 
-    peerList <- queryTracker peerId infoHash compact port uploaded download initLeft announceURL
+    peerList <- queryTracker myPeerId infoHash compact port uploaded download initLeft announceURL
     --print $ announceURL
     --print $ infoHash
     --print contents
     print peerList
-    handle <- connectPeers peerList
+    --handle <- connectPeers peerList
+    connectPeers peerList
     print "handle"
     print handle
     sendHandshake handle infoHash peerId
     res <- receiveHandshake handle
     print res
-    --case validateHandshake res infoHash of
-    --    Left _      -> "wrong infoHash"
-    --    Right ()    -> "right infoHash"
     print $ validateHandshake res infoHash
     print "---END---" 
