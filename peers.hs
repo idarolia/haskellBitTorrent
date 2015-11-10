@@ -3,19 +3,48 @@ module PEERS where
 import BENCODE
 import DATATYPES
 
-
+import Control.Monad.STM
 import Data.ByteString as BS
 import Data.ByteString.Lazy as B
 import Data.ByteString.Char8 as BC
 import Network.Socket
 import Network
 import System.IO
+import Control.Exception
+import Control.Concurrent
 
-connectPeers::[PeerAddress] -> IO Handle
-connectPeers list = connectPeer (list !! 0)
+connectPeers::[PeerAddress] -> Torrent -> IO ()
+connectPeers peerList tor = do
+							mapM_ (connectPeer tor) peerList
+							--atomically $ do
+							--	finished <- readTVar (done tor)
+							--	if finished
+							--		then return ()
+							--		else retry
+							print "Downloading Completed!\n"
 
-connectPeer:: PeerAddress -> IO Handle
-connectPeer (Address host (PortNumber port)) = do
+func:: Torrent -> Handle -> IO ()
+func tor handle = do
+					print "Bunny"
+					return ()
+
+--connectPeer:: Torrent -> PeerAddress -> 
+connectPeer tor peerAddr = let start = bracket (getPeerHandle peerAddr) (closeHandle peerAddr) (func tor)
+							in forkFinally start (handleException peerAddr)
+
+closeHandle::PeerAddress -> Handle -> IO ()
+closeHandle (Address host (PortNumber port)) handle = do
+								print $ ("Connection Close: ") ++ show host ++ ":" ++ show port
+								print "\n" 
+								hClose handle
+
+handleException:: PeerAddress -> Either SomeException a -> IO ()
+handleException (Address host (PortNumber port)) (Right _) = print $ "Peer: " ++ show host ++ ":" ++ show port ++ " Done.\n"
+handleException (Address host (PortNumber port)) (Left e) = print $ "\n\not Exception in Peer: " ++ show host ++ ":" ++ show port ++ " error:" ++ show(e)
+
+
+getPeerHandle:: PeerAddress -> IO Handle
+getPeerHandle (Address host (PortNumber port)) = do
 									sock <- socket AF_INET Stream defaultProtocol
 									sock1 <- getAddrInfo Nothing (Just host) (Just $ show port)
 									connect sock (addrAddress $ Prelude.head sock1)

@@ -27,9 +27,9 @@ main = do
     tor <- makeTorrent filename myPeerId
 
     peerList <- getPeerList tor
-
+    print peerList
     --handle <- connectPeers peerList
-    connectPeers peerList
+    connectPeers peerList tor
 
     --print "handle"
     --print handle
