@@ -1,5 +1,8 @@
+import TORRENT
 import BENCODE
 import HTTP_REQ
+import PEERS
+import DATATYPES
 
 import qualified Data.Map as Map
 import Data.Map(Map)
@@ -9,57 +12,44 @@ import Data.ByteString.Lazy as B
 import Data.ByteString.Lazy.Char8 as C
 import Data.ByteString.Char8 as BC
 import Crypto.Hash.SHA1 as SHA1
-import Crypto.Hash
-import Network.Socket
 import Data.Byteable
+import Network.Socket
 import System.IO
+import System.Random
 import System.IO (hFlush, stdout)
 import Data.Binary.Put
 
 main = do
     let filename = "debian-8.2.0-amd64-lxde-CD-1.iso.torrent"
     
-    inpData <- B.readFile filename 
-    let contents = bRead inpData
+    myPeerId <- genPeerID
 
-    let mainDict = maybeDict2Dict contents
+    tor <- makeTorrent filename myPeerId
 
-    let url = readDict mainDict "announce"
-    let announceURL = maybeString2String url
+    peerList <- getPeerList tor
 
-    let infoDict = readDict mainDict "info"
-    let info = maybeDict2Dict infoDict
-    
-    let initLeft = BC.pack $ show $ findInitLeft info
+    --handle <- connectPeers peerList
+    connectPeers peerList
 
-    let pieceLen = readDict info "piece length"
-    let pieceLength = maybeInt2Int pieceLen
-
-    let piece = readDict info "pieces"
-    let pieces = maybeString2String piece
-    let numPieces = (B.length pieces) `div` 20
-
-    let infoBencode = deparse (BDict info)
-    let infoHash = toBytes $ SHA1.hashlazy (infoBencode)--BC.pack $ C.unpack $ B.fromStrict $ toBytes $ SHA1.hashlazy (infoBencode) -- hashlazy returns a bytestring instead of a digest bytestring
-
-    peerId <- genPeerID
-    tcpSock <- makeTCPSock
-    temp <- socketPort tcpSock
-    let port = BC.pack $ show $ temp
-    let compact = BC.pack "1"
-    let uploaded = BC.pack "0"
-    let download = BC.pack "0"
-
-    peerList <- queryTracker peerId infoHash compact port uploaded download initLeft announceURL
-    --print $ announceURL
-    --print $ infoHash
-    --print contents
-    print peerList
-    handle <- connectPeers peerList
-    print "handle"
-    print handle
-    sendHandshake handle infoHash peerId
-    res <- receiveHandshake handle
-    print res
-    --print $ validateHandshake res infoHash
+    --print "handle"
+    --print handle
+    --sendHandshake handle (infoHash tor) myPeerId
+    --res <- receiveHandshake handle
+    --print res
+    --print $ validateHandshake res (infoHash tor)
     print "---END---" 
+
+genPeerID :: IO BC.ByteString
+genPeerID = do
+              let a = 1000000000000 :: Integer
+              randNum13 <- getStdRandom (randomR(a,9999999999999))
+              let peerId = "-HB0001" ++ show randNum13
+              return $ BC.pack peerId
+
+getPeerList::Torrent -> IO [PeerAddress]
+getPeerList tor = do
+                    tcpSock <- makeTCPSock
+                    temp <- socketPort tcpSock
+                    let port = BC.pack $ show $ temp
+                    peerList <- queryTracker tor port
+                    return peerList

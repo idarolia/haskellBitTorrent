@@ -1,18 +1,20 @@
 {-# LANGUAGE RankNTypes #-} 				-- Rank2Types is a synonym for RankNTypes
 module BENCODE where
 
+import DATATYPES
 import qualified Data.Map as Map
 import Data.Map(Map)
 import Text.ParserCombinators.Parsec
 import Data.BEncode
 import Data.ByteString.Lazy as B
+import Data.ByteString.Char8 as BC
 import Lens.Family2
 import Data.Attoparsec.ByteString
 import Control.Monad
 import Control.Applicative
 import Data.Traversable
 
-bstring :: Traversal' BEncode ByteString
+bstring :: Traversal' BEncode B.ByteString
 bstring f (BString s) = BString <$> f s
 bstring _ bv = pure bv
 
@@ -51,15 +53,3 @@ maybeList2List (Just (BList x)) = x
 maybeDict2Dict :: Maybe BEncode -> Map String BEncode
 maybeDict2Dict Nothing          = Map.empty
 maybeDict2Dict (Just (BDict m)) = m
-
-getLenSum :: [BEncode] -> Integer
-getLenSum []        = 0
-getLenSum (x:xs)    = maybeInt2Int (Map.lookup "length" dict) + getLenSum xs
-                      where BDict dict = x
-
-findInitLeft :: Map String BEncode -> Integer
-findInitLeft info   | Map.size info == 0        = 0
-                    | fileList == Nothing   = maybeInt2Int len
-                    | otherwise             = getLenSum $ maybeList2List fileList
-                        where fileList  = Map.lookup "files" info
-                              len       = Map.lookup "length" info
