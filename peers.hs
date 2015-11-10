@@ -23,25 +23,23 @@ connectPeers peerList tor = do
 							--		else retry
 							print "Downloading Completed!\n"
 
-func:: Torrent -> Handle -> IO ()
-func tor handle = do
+startPeer:: Torrent -> Handle -> IO ()
+startPeer tor handle = do
 					print "Bunny"
 					return ()
 
 --connectPeer:: Torrent -> PeerAddress -> 
-connectPeer tor peerAddr = let start = bracket (getPeerHandle peerAddr) (closeHandle peerAddr) (func tor)
+connectPeer tor peerAddr = let start = bracket (getPeerHandle peerAddr) (closeHandle peerAddr) (startPeer tor)
 							in forkFinally start (handleException peerAddr)
 
 closeHandle::PeerAddress -> Handle -> IO ()
 closeHandle (Address host (PortNumber port)) handle = do
 								print $ ("Connection Close: ") ++ show host ++ ":" ++ show port
-								print "\n" 
 								hClose handle
 
 handleException:: PeerAddress -> Either SomeException a -> IO ()
-handleException (Address host (PortNumber port)) (Right _) = print $ "Peer: " ++ show host ++ ":" ++ show port ++ " Done.\n"
-handleException (Address host (PortNumber port)) (Left e) = print $ "\n\not Exception in Peer: " ++ show host ++ ":" ++ show port ++ " error:" ++ show(e)
-
+handleException (Address host (PortNumber port)) (Right _) = print $ "Peer: " ++ show host ++ ":" ++ show port ++ " Done."
+handleException (Address host (PortNumber port)) (Left e) = print $ "Exception in Peer: " ++ show host ++ ":" ++ show port ++ " error:" ++ show(e)
 
 getPeerHandle:: PeerAddress -> IO Handle
 getPeerHandle (Address host (PortNumber port)) = do
