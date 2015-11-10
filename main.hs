@@ -10,6 +10,7 @@ import Text.ParserCombinators.Parsec
 import Data.BEncode
 import Data.ByteString.Lazy as B
 import Data.ByteString.Lazy.Char8 as C
+import Data.Word
 import Data.ByteString.Char8 as BC
 import Crypto.Hash.SHA1 as SHA1
 import Data.Byteable

@@ -5,6 +5,7 @@ import DATATYPES
 
 import Data.ByteString.Lazy as B
 import Data.ByteString.Char8 as BC
+import Data.Word
 import Crypto.Hash
 import Crypto.Hash.SHA1 as SHA1
 import Data.Byteable
