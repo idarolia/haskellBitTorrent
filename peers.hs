@@ -4,16 +4,18 @@ import BENCODE
 import DATATYPES
 
 import Control.Monad.STM
+import Data.Monoid	((<>))
 import Data.ByteString as BS
 import Data.ByteString.Lazy as B
+import Data.ByteString.Char8 as BC
 import Data.Word
 import Data.Bits
 import Data.Bits.Bitwise
 import Data.List as L
-import Data.ByteString.Char8 as BC
 import Network.Socket
 import Network
-import Data.Binary.Get
+import Data.Binary (Binary)
+import qualified Data.Binary as Bin
 import System.IO
 import Control.Exception
 import Control.Concurrent
@@ -104,39 +106,23 @@ validateHandshake (_,_,_,info_hash,_) infoHash
 
 --listenPeer :: Torrent -> Peer -> IO ()
 listenPeer tor peer = do
-						print (numPieces tor)
-						msg <- receiveMessage (phandle peer)
+						let handle = phandle peer
+						msg <- receiveMessage handle
 						print msg
+						case msg of
+							Choke -> atomically (writeTVar (pChocking peer) True) >> print "choke"
+							Unchoke -> atomically (writeTVar (pChocking peer) False) >> print "Unchoke"
+							Interested -> atomically (writeTVar (pInterested peer) True) >> print "Interested"
+							Uninterested -> atomically (writeTVar (pChocking peer) False) >> print "Uninterested"
+							Have 
 						return ()
 
+receiveMessage :: Handle -> IO PWP
 receiveMessage handle = do
-						
-
---receiveMessage :: Handle -> IO PWP
---receiveMessage handle = do
---						numBytes <- BS.hGet handle 4
---						let len = fromIntegral $ runGet getWord32be $ B.fromChunks $ return numBytes
---						case len of
---							0 -> return Keepalive
---							otherwise -> do
---										mType <- BS.hGet handle 1
---										body <- BS.hGet handle (len-1)
---										let msgId = fromEnum $ L.sum $ BS.unpack mType
---										print msgId
---										print $ BS.length body
---										print body
---										case msgId of
---											0 -> return $ Choke
---											1 -> return $ Unchoke
---											2 -> return $ Interested
---											3 -> return $ Uninterested
---											4 -> return $ Have body
---											5 -> return $ BitField body
---											--5 -> return $ BitField (bytestringToBool body)
---										--	6 -> return $ Request
---										--	7 -> return $ Piece
---										--	8 -> return $ Cancel
---											otherwise -> return Keepalive
+						b <- B.hGet handle 4
+						let len = fromIntegral (Bin.decode $ b :: Word32)
+						m <- B.hGet handle len
+						return $ Bin.decode (b <> m)
 
 --bytestringToBool :: BC.ByteString -> [Bool]
 --bytestringToBool body = L.foldr (++) [] (L.map ((\(a,b,c,d,e,f,g,h) -> [a,b,c,d,e,f,g,h]) . unpackWord8BE) (BS.unpack body))
