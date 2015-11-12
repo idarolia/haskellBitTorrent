@@ -21,7 +21,7 @@ import System.IO (hFlush, stdout)
 import Data.Binary.Put
 
 main = do
-    let filename = "debian-8.2.0-amd64-lxde-CD-1.iso.torrent"
+    let filename = "tom.torrent"
     let output = "out"
     
     myPeerId <- genPeerID

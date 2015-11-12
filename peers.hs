@@ -51,11 +51,10 @@ makePeer h = do
 connectPeers::[PeerAddress] -> Torrent -> IO ()
 connectPeers peerList tor = do
 							mapM_ (connectPeer tor) peerList
-							--atomically $ do
-							--	finished <- readTVar (done tor)
-							--	if finished
-							--		then return ()
-							--		else retry
+							atomically $ do
+								finished <- readTVar (completed tor)
+								if finished then return ()
+								else retry
 							print "Downloading Completed!\n"
 
 startPeer:: Torrent -> Handle -> IO ()
@@ -66,8 +65,7 @@ startPeer tor handle = do
 					case validateHandshake res (infoHash tor) of
 						Nothing -> print "InfoHash Mismatch"
 						Just () -> do
-									--listenPeer tor peer
-									race_ (listenPeer tor peer) (talkWithPeer tor peer)
+							race_ (listenPeer tor peer) (talkWithPeer tor peer)
 					return ()
 
 connectPeer tor peerAddr = let start = bracket (getPeerHandle peerAddr) (closeHandle peerAddr) (startPeer tor)
@@ -97,7 +95,6 @@ sendHandshake handle infoHash peerId = BC.hPutStr handle handshake
  							
 receiveHandshake:: Handle -> IO (BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString,BC.ByteString) -- not tested
 receiveHandshake handle =    do pstrlen <- BS.hGet handle 1
-                                print $ pstrlen
                                 pstr <- BS.hGet handle $ fromIntegral $ Prelude.head $ BS.unpack pstrlen
                                 reserved <- BS.hGet handle 8
                                 infoHash <- BS.hGet handle 20
@@ -113,20 +110,17 @@ listenPeer :: Torrent -> Peer -> IO ()
 listenPeer tor peer = forever $ do
 						let handle = phandle peer
 						msg <- receivePwpMessage handle
-						print msg
 						case msg of
-							Choke -> atomically (writeTVar (pChocking peer) True) >> print "choke"
-							Unchoke -> atomically (writeTVar (pChocking peer) False) >> print "Unchoke"
-							Interested -> atomically (writeTVar (pInterested peer) True) >> print "Interested"
-							Uninterested -> atomically (writeTVar (pInterested peer) False) >> print "Uninterested"
+							Choke -> atomically (writeTVar (pChocking peer) True) 
+							Unchoke -> atomically (writeTVar (pChocking peer) False) 
+							Interested -> atomically (writeTVar (pInterested peer) True) 
+							Uninterested -> atomically (writeTVar (pInterested peer) False) 
 							Have n -> do
 									bitfieldList <- readTVarIO (bitField peer)
-									atomically (writeTVar (bitField peer) (newBitfield (word32ToInt n) bitfieldList)) 
-									>> print ("Have" ++ (show (word32ToInt n)))
+									atomically (writeTVar (bitField peer) (newBitfield (word32ToInt n) bitfieldList))
 							BitField field -> do
 											let boolField = bytestringToBool field
-											atomically (writeTVar (bitField peer) boolField) 
-											>> print "BitField"
+											atomically (writeTVar (bitField peer) boolField)
 							Piece pId os content -> do
 											let pieceId = word32ToInt pId
 											let offset = word32ToInt os
@@ -168,10 +162,11 @@ requestPeer tor peer = do
 							True -> do
 									let msg = Interested
 									sendPwpMessage handle msg
+									threadDelay 5000000
 							False -> do
 									p <- (atomically.readTVar) (pending peer)
 									case p of
-										True -> threadDelay 100000
+										True -> threadDelay 5000000
 										False -> do
 											req <- atomically (makeRequest tor)
 											case req of

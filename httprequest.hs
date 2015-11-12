@@ -39,7 +39,6 @@ queryTracker tor port = do
 									(BC.pack "uploaded",Just (BC.pack "0")),		--uploaded
 									(BC.pack "downloaded",Just (BC.pack "0")),		--downloaded
 									(BC.pack "left", Just $ left tor)	] url
-			print req
 			manager <- newManager defaultManagerSettings
 			response <- httpLbs req manager
 			let body = responseBody response
