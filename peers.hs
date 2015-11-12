@@ -21,6 +21,7 @@ import Control.Exception
 import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Concurrent.STM.TVar
+import Control.Monad.Loops
 
 makePeer::Handle -> STM Peer
 makePeer h = do
@@ -107,7 +108,7 @@ validateHandshake (_,_,_,info_hash,_) infoHash
 --listenPeer :: Torrent -> Peer -> IO ()
 listenPeer tor peer = do
 						let handle = phandle peer
-						msg <- receiveMessage handle
+						msg <- receivePwpMessage handle
 						print msg
 						case msg of
 							Choke -> atomically (writeTVar (pChocking peer) True) >> print "choke"
@@ -117,12 +118,19 @@ listenPeer tor peer = do
 							Have 
 						return ()
 
-receiveMessage :: Handle -> IO PWP
-receiveMessage handle = do
+talkWithPeer tor peer = whileM_ (not <$> atomically.readTVar (completed tor)) requestPeer $ tor peer
+
+receivePwpMessage :: Handle -> IO PWP
+receivePwpMessage handle = do
 						b <- B.hGet handle 4
 						let len = fromIntegral (Bin.decode $ b :: Word32)
 						m <- B.hGet handle len
 						return $ Bin.decode (b <> m)
+
+sendPwpMessage msg :: Handle -> PWP -> IO ()
+sendPwpMessage handle message = do B.hPut $ handle $ Bin.encode message
+
+
 
 --bytestringToBool :: BC.ByteString -> [Bool]
 --bytestringToBool body = L.foldr (++) [] (L.map ((\(a,b,c,d,e,f,g,h) -> [a,b,c,d,e,f,g,h]) . unpackWord8BE) (BS.unpack body))

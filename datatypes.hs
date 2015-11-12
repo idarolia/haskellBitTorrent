@@ -13,8 +13,6 @@ import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM
 import System.IO
 
-type BitField = [Bool]
-
 data PeerAddress = Address {host :: HostName, port :: PortID} deriving (Show)
 
 data Torrent = Torrent
@@ -26,6 +24,8 @@ data Torrent = Torrent
 	, pieceLength	:: Int
 	, numPieces		:: Int
 	, left			:: BC.ByteString
+	, completed			:: TVar Bool
+	, presentPieces :: TVar [Bool]
 	} deriving (Show)
 
 data Peer = Peer
@@ -35,7 +35,7 @@ data Peer = Peer
 	, pInterested :: TVar Bool
 	, iChoking 	  :: TVar Bool
 	, pChocking	  :: TVar Bool
-	, bitField	  :: TVar BitField
+	, bitField	  :: TVar [Bool]
 	, waiting     :: TVar Bool
 	}
 

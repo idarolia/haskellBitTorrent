@@ -14,6 +14,7 @@ import Control.Monad
 import Control.Applicative
 import Data.Traversable
 
+-- tried lenses for traversal chaps.io, will use them instead of our functions if faster
 bstring :: Traversal' BEncode B.ByteString
 bstring f (BString s) = BString <$> f s
 bstring _ bv = pure bv
