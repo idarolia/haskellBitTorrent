@@ -39,6 +39,9 @@ makeTorrent fname mPeerId = do
 
 					let infoBencode = deparse (BDict info)
 					let iHash = toBytes $ SHA1.hashlazy (infoBencode)
+					c <- newTVar False
+					pp <- newTVar []
+					nextreq <- newTVar Just(0,0)
 
 					return Torrent{
 						torrentName = fname,
@@ -48,7 +51,10 @@ makeTorrent fname mPeerId = do
 						piecesHash = pHash,
 						pieceLength = pLength,
 						numPieces = nPieces,
-						left = initLeft
+						left = initLeft,
+						completed = c,
+						presentPieces = pp
+						nextRequest = nextreq
 					}
 
 findInitLeft :: Map String BEncode -> Integer

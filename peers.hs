@@ -4,7 +4,9 @@ import BENCODE
 import DATATYPES
 
 import Control.Monad.STM
+import Control.Monad (forever)
 import Data.Monoid	((<>))
+import Control.Applicative
 import Data.ByteString as BS
 import Data.ByteString.Lazy as B
 import Data.ByteString.Char8 as BC
@@ -25,22 +27,24 @@ import Control.Monad.Loops
 
 makePeer::Handle -> STM Peer
 makePeer h = do
-				let peerid = Nothing
+				let peerid  = Nothing
 				iinterested <- newTVar False
 				pinterested <- newTVar False
-				ichoking <- newTVar True
-				pchocking <- newTVar True
-				bitfield <- newTVar []
-				wait <- newTVar False
+				ichoking 	<- newTVar True
+				pchocking 	<- newTVar True
+				bitfield 	<- newTVar []
+				wait 		<- newTVar False
+				p 			<- newTVar False
 				return Peer{
-					phandle = h,
-					peerId = peerid,
+					phandle 	= h,
+					peerId 		= peerid,
 					iInterested = iinterested,
 					pInterested = pinterested,
-					iChoking = ichoking,
-					pChocking = pchocking,
-					bitField = bitfield,
-					waiting = wait
+					iChoking 	= ichoking,
+					pChocking 	= pchocking,
+					bitField 	= bitfield,
+					waiting 	= wait,
+					pending 	= p
 				}
 
 connectPeers::[PeerAddress] -> Torrent -> IO ()
@@ -105,8 +109,8 @@ validateHandshake (_,_,_,info_hash,_) infoHash
 											|info_hash == infoHash = Just ()
 											|otherwise = Nothing
 
---listenPeer :: Torrent -> Peer -> IO ()
-listenPeer tor peer = do
+listenPeer :: Torrent -> Peer -> IO ()
+listenPeer tor peer = forever $ do
 						let handle = phandle peer
 						msg <- receivePwpMessage handle
 						print msg
@@ -114,11 +118,23 @@ listenPeer tor peer = do
 							Choke -> atomically (writeTVar (pChocking peer) True) >> print "choke"
 							Unchoke -> atomically (writeTVar (pChocking peer) False) >> print "Unchoke"
 							Interested -> atomically (writeTVar (pInterested peer) True) >> print "Interested"
-							Uninterested -> atomically (writeTVar (pChocking peer) False) >> print "Uninterested"
-							Have 
+							Uninterested -> atomically (writeTVar (pInterested peer) False) >> print "Uninterested"
+							Have n -> do
+									bitfieldList <- readTVarIO (bitField peer)
+									atomically (writeTVar (bitField peer) (newBitfield (word32ToInt n) bitfieldList)) 
+									>> print ("Have" ++ (show (word32ToInt n)))
+							BitField field -> do
+											let boolField = bytestringToBool field
+											atomically (writeTVar (bitField peer) boolField) 
+											>> print "BitField"
+							--Piece pId os content -> do
+							--				let pieceId = word32ToInt pId
+							--				let offset = word32ToInt os
+							--				>> print "Piece"
 						return ()
 
-talkWithPeer tor peer = whileM_ (not <$> atomically.readTVar (completed tor)) requestPeer $ tor peer
+talkWithPeer :: Torrent -> Peer -> IO ()
+talkWithPeer tor peer = whileM_ (not <$> (atomically.readTVar) (completed tor)) (requestPeer tor peer)
 
 receivePwpMessage :: Handle -> IO PWP
 receivePwpMessage handle = do
@@ -127,10 +143,59 @@ receivePwpMessage handle = do
 						m <- B.hGet handle len
 						return $ Bin.decode (b <> m)
 
-sendPwpMessage msg :: Handle -> PWP -> IO ()
-sendPwpMessage handle message = do B.hPut $ handle $ Bin.encode message
+requestPeer :: Torrent -> Peer -> IO ()
+requestPeer tor peer = do
+						let handle = (phandle peer)
+						pChoke <- (atomically.readTVar) (pChocking peer)
+						case pChoke of
+							True -> do
+									let msg = Interested
+									sendPwpMessage handle msg
+							False -> do
+									p <- (atomically.readTVar) (pending peer)
+									case p of
+										True -> threadDelay 100000
+										False -> do
+											req <- atomically (makeRequest tor)
+											case req of
+												Nothing -> return ()
+												Just(pieceId,offset,len) -> do
+														let msg = Request (intToWord32 pieceId) (intToWord32 offset) (intToWord32 len)
+														sendPwpMessage handle msg
+														atomically (writeTVar (pending peer) True)
 
+sendPwpMessage :: Handle -> PWP -> IO ()
+sendPwpMessage handle msg = do B.hPut $ handle $ Bin.encode msg
 
+makeRequest::Torrent -> STM (Maybe (Int, Int, Int))
+makeRequest tor = do
+					nextreq <- readTVar (nextRequest tor)
+					let pLen = (pieceLength tor)
+					case nextreq of
+						Nothing -> return Nothing
+						Just(pId,offset) -> do
+							if (pLen-offset) <= 16384 then do							-- blockSize = 16384
+								let len = pLen-offset
+								if (pId < (numPieces tor) -2) then do
+									writeTVar (nextRequest tor) (Just((pId+1),0))		-- nextPiece to download
+									return $ Just(pId,offset,len)
+								else do
+									writeTVar (nextRequest tor) Nothing
+									writeTVar (completed tor) True					-- Download Complete after downloading this piece
+									return $ Just(pId,offset,len)
+							else do
+								let len = 16384
+								writeTVar (nextRequest tor) (Just(pId,offset+16384))
+								return $ Just(pId,offset,len)
 
---bytestringToBool :: BC.ByteString -> [Bool]
---bytestringToBool body = L.foldr (++) [] (L.map ((\(a,b,c,d,e,f,g,h) -> [a,b,c,d,e,f,g,h]) . unpackWord8BE) (BS.unpack body))
+newBitfield :: Int -> [Bool] -> [Bool]
+newBitfield n l = (L.take n l) ++ [True] ++ (L.drop (n+1) l)
+
+word32ToInt :: Word32 -> Int
+word32ToInt = fromIntegral
+
+intToWord32 :: Int -> Word32
+intToWord32 = fromIntegral
+
+bytestringToBool :: BC.ByteString -> [Bool]
+bytestringToBool str = L.foldr (++) [] (L.map ((\(a,b,c,d,e,f,g,h) -> [a,b,c,d,e,f,g,h]) . unpackWord8BE) (BS.unpack str))

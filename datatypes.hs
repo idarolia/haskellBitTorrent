@@ -24,19 +24,21 @@ data Torrent = Torrent
 	, pieceLength	:: Int
 	, numPieces		:: Int
 	, left			:: BC.ByteString
-	, completed			:: TVar Bool
+	, completed		:: TVar Bool
 	, presentPieces :: TVar [Bool]
-	} deriving (Show)
+	, nextRequest   :: TVar (Maybe(Int, Int))
+	}
 
 data Peer = Peer
 	{ phandle	  :: Handle
 	, peerId 	  :: Maybe BC.ByteString
-	, iInterested :: TVar Bool
-	, pInterested :: TVar Bool
-	, iChoking 	  :: TVar Bool
-	, pChocking	  :: TVar Bool
+	, iInterested :: TVar Bool				-- true: Peer is interested in me
+	, pInterested :: TVar Bool				-- true: 
+	, iChoking 	  :: TVar Bool				-- true: we cannot download from this peer
+	, pChocking	  :: TVar Bool				-- true: The peer cannot download from me
 	, bitField	  :: TVar [Bool]
 	, waiting     :: TVar Bool
+	, pending	  :: TVar Bool
 	}
 
 data PWP = Keepalive 
