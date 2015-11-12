@@ -22,22 +22,15 @@ import Data.Binary.Put
 
 main = do
     let filename = "debian-8.2.0-amd64-lxde-CD-1.iso.torrent"
+    let output = "out"
     
     myPeerId <- genPeerID
 
-    tor <- makeTorrent filename myPeerId
+    tor <- makeTorrent filename output myPeerId
 
     peerList <- getPeerList tor
     print peerList
-    --handle <- connectPeers peerList
     connectPeers peerList tor
-
-    --print "handle"
-    --print handle
-    --sendHandshake handle (infoHash tor) myPeerId
-    --res <- receiveHandshake handle
-    --print res
-    --print $ validateHandshake res (infoHash tor)
     print "---END---" 
 
 genPeerID :: IO BC.ByteString

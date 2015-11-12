@@ -23,6 +23,7 @@ import Control.Exception
 import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Concurrent.STM.TVar
+import Crypto.Hash.SHA1 (hash)
 import Control.Monad.Loops
 
 makePeer::Handle -> STM Peer
@@ -65,11 +66,10 @@ startPeer tor handle = do
 					case validateHandshake res (infoHash tor) of
 						Nothing -> print "InfoHash Mismatch"
 						Just () -> do
-									listenPeer tor peer
-									--race_ (listenPeer tor peer) (talkPeer tor peer)
+									--listenPeer tor peer
+									race_ (listenPeer tor peer) (talkWithPeer tor peer)
 					return ()
 
---connectPeer:: Torrent -> PeerAddress -> 
 connectPeer tor peerAddr = let start = bracket (getPeerHandle peerAddr) (closeHandle peerAddr) (startPeer tor)
 							in forkFinally start (handleException peerAddr)
 
@@ -130,7 +130,24 @@ listenPeer tor peer = forever $ do
 							Piece pId os content -> do
 											let pieceId = word32ToInt pId
 											let offset = word32ToInt os
-											print "Piece"
+											atomically (writeTVar (pending peer) False)
+											atomically (updatePieceData tor (pieceId,offset,content))
+											pData <- (atomically.readTVar) (piecesData tor)
+											let a = (pieceLength tor)
+											let b = 16384
+											let len | (a`mod`b == 0) = a`div`b
+													| otherwise = ((a`div`b) + 1)
+											if ( (Prelude.length (pData !! pieceId)) == len) then do
+												let correctPieceHash = (piecesHash tor) !! pieceId
+												pDataSorted <- funcSort (pData !! pieceId)
+												let totalPiece = BC.concat $ L.map getContent pDataSorted
+												let receiveHash =  hash totalPiece
+												if correctPieceHash == receiveHash then do
+													BC.appendFile (outputFile tor) totalPiece
+												else
+													print (" Error in Downloading Piece " ++ show (pieceId))
+											else
+												return ()
 						return ()
 
 talkWithPeer :: Torrent -> Peer -> IO ()
@@ -187,6 +204,34 @@ makeRequest tor = do
 								let len = 16384
 								writeTVar (nextRequest tor) (Just(pId,offset+16384))
 								return $ Just(pId,offset,len)
+
+updatePieceData tor (pId,offset,content) = do
+									pData <- readTVar (piecesData tor)
+									let t = (pId,offset,content) : (pData !! pId)
+									writeTVar (piecesData tor) (updateList pId t pData)
+
+funcSort :: [(Int,Int,BC.ByteString)] -> IO ([(Int,Int,BC.ByteString)])
+funcSort pData = do
+				let pDataTuple = convertTuple3 pData
+				let pDataTupleSorted = L.sort pDataTuple
+				let list = convertList pDataTupleSorted
+				return list
+
+getContent :: (Int,Int,BC.ByteString) -> BC.ByteString
+getContent (_,_,c) = c
+
+convertTuple3 :: [(Int,Int,BC.ByteString)] -> [Tuple3]
+convertTuple3 [] = []
+convertTuple3 ((a,b,c):xs) = (Tuple3 a b c) : convertTuple3 xs
+
+
+convertList :: [Tuple3] -> [(Int,Int,BC.ByteString)]
+convertList [] = []
+convertList ((Tuple3 a b c):xs) = (a,b,c) : convertList xs
+
+
+updateList :: Int -> [(Int,Int,BC.ByteString)] -> [[(Int,Int,BC.ByteString)]] -> [[(Int,Int,BC.ByteString)]]
+updateList n val l	= (L.take n l) ++ [val] ++ (L.drop (n+1) l)
 
 newBitfield :: Int -> [Bool] -> [Bool]
 newBitfield n l = (L.take n l) ++ [True] ++ (L.drop (n+1) l)

@@ -16,8 +16,8 @@ import Data.List.Split
 import qualified Data.Map as Map
 import Data.Map(Map)
 
-makeTorrent :: String -> BC.ByteString -> IO Torrent
-makeTorrent fname mPeerId = do
+makeTorrent :: String -> String -> BC.ByteString -> IO Torrent
+makeTorrent fname output mPeerId = do
 					inpData <- B.readFile fname 
 					let contents = bRead inpData
 					let mainDict = maybeDict2Dict contents
@@ -44,9 +44,11 @@ makeTorrent fname mPeerId = do
 					c 		<- atomically (newTVar False)
 					pp 		<- atomically (newTVar [])
 					nextreq <- atomically (newTVar (Just(0,0)))
+					pData 	<- atomically (newTVar $ Prelude.take nPieces $ Prelude.repeat [])
 
 					return Torrent{
 						torrentName 	= fname,
+						outputFile		= output,
 						announceURL 	= aURL,
 						infoHash 		= iHash,
 						myPeerId 		= mPeerId,
@@ -56,7 +58,8 @@ makeTorrent fname mPeerId = do
 						left 			= initLeft,
 						completed 		= c,
 						presentPieces 	= pp,
-						nextRequest 	= nextreq
+						nextRequest 	= nextreq,
+						piecesData		= pData
 					}
 
 findInitLeft :: Map String BEncode -> Integer

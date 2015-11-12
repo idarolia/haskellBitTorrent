@@ -17,6 +17,7 @@ data PeerAddress = Address {host :: HostName, port :: PortID} deriving (Show)
 
 data Torrent = Torrent
 	{ torrentName	:: String
+	, outputFile	:: String
 	, announceURL	:: BC.ByteString             
 	, infoHash		:: BC.ByteString        
 	, myPeerId		:: BC.ByteString
@@ -27,6 +28,7 @@ data Torrent = Torrent
 	, completed		:: TVar Bool
 	, presentPieces :: TVar [Bool]
 	, nextRequest   :: TVar (Maybe(Int, Int))
+	, piecesData 	:: TVar [[(Int,Int,BC.ByteString)]]
 	}
 
 data Peer = Peer
@@ -52,6 +54,13 @@ data PWP = Keepalive
 		 | Piece Word32 Word32 BC.ByteString
 		 | Cancel Word32 Word32 Word32 
 		 deriving (Show)
+
+data Tuple3 = Tuple3 Int Int BC.ByteString deriving (Show,Eq)
+
+instance Ord Tuple3 where
+	compare (Tuple3 a1 b1 _) (Tuple3 a2 b2 _) 
+		| a1 == a2 = compare b1 b2 
+		| otherwise = compare a1 a2
 
 instance Binary PWP where
 	put Keepalive = put(0::Word32)
