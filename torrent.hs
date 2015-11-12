@@ -10,6 +10,8 @@ import Crypto.Hash
 import Crypto.Hash.SHA1 as SHA1
 import Data.Byteable
 import Data.BEncode
+import Control.Concurrent.STM.TVar
+import Control.Concurrent.STM
 import Data.List.Split
 import qualified Data.Map as Map
 import Data.Map(Map)
@@ -39,22 +41,22 @@ makeTorrent fname mPeerId = do
 
 					let infoBencode = deparse (BDict info)
 					let iHash = toBytes $ SHA1.hashlazy (infoBencode)
-					c <- newTVar False
-					pp <- newTVar []
-					nextreq <- newTVar Just(0,0)
+					c 		<- atomically (newTVar False)
+					pp 		<- atomically (newTVar [])
+					nextreq <- atomically (newTVar (Just(0,0)))
 
 					return Torrent{
-						torrentName = fname,
-						announceURL = aURL,
-						infoHash = iHash,
-						myPeerId = mPeerId,
-						piecesHash = pHash,
-						pieceLength = pLength,
-						numPieces = nPieces,
-						left = initLeft,
-						completed = c,
-						presentPieces = pp
-						nextRequest = nextreq
+						torrentName 	= fname,
+						announceURL 	= aURL,
+						infoHash 		= iHash,
+						myPeerId 		= mPeerId,
+						piecesHash 		= pHash,
+						pieceLength 	= pLength,
+						numPieces 		= nPieces,
+						left 			= initLeft,
+						completed 		= c,
+						presentPieces 	= pp,
+						nextRequest 	= nextreq
 					}
 
 findInitLeft :: Map String BEncode -> Integer

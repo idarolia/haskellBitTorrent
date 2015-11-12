@@ -127,10 +127,10 @@ listenPeer tor peer = forever $ do
 											let boolField = bytestringToBool field
 											atomically (writeTVar (bitField peer) boolField) 
 											>> print "BitField"
-							--Piece pId os content -> do
-							--				let pieceId = word32ToInt pId
-							--				let offset = word32ToInt os
-							--				>> print "Piece"
+							Piece pId os content -> do
+											let pieceId = word32ToInt pId
+											let offset = word32ToInt os
+											print "Piece"
 						return ()
 
 talkWithPeer :: Torrent -> Peer -> IO ()
@@ -165,7 +165,7 @@ requestPeer tor peer = do
 														atomically (writeTVar (pending peer) True)
 
 sendPwpMessage :: Handle -> PWP -> IO ()
-sendPwpMessage handle msg = do B.hPut $ handle $ Bin.encode msg
+sendPwpMessage handle msg = do B.hPut handle (Bin.encode msg)
 
 makeRequest::Torrent -> STM (Maybe (Int, Int, Int))
 makeRequest tor = do
